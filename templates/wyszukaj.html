@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <h2><i class="fas fa-search-location"></i> Wyszukaj najbliższe GPZ</h2>
+    <p style="margin-bottom: 1.5rem;">Wprowadź swój adres, aby znaleźć trzy najbliższe Główne Punkty Zasilania i sprawdzić dostępną moc.</p>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label for="adres"><i class="fas fa-map-marker-alt"></i> Podaj adres (ulica, numer, miasto)</label>
+            <input type="text" id="adres" name="adres" required placeholder="np. Marszałkowska 100, Warszawa">
+        </div>
+        <button type="submit"><i class="fas fa-search"></i> Wyszukaj</button>
+    </form>
+    
+    {% if wyniki %}
+        <h2 style="margin-top: 2rem; margin-bottom: 1rem;"><i class="fas fa-list-alt"></i> Wyniki wyszukiwania</h2>
+        {% for gpz in wyniki %}
+            <div class="result">
+                <h3><i class="fas fa-bolt"></i> {{ gpz.nazwa }}</h3>
+                <div class="result-info">
+                    <div class="result-info-item">
+                        <strong><i class="fas fa-map-marker-alt"></i> Adres:</strong>
+                        <p>{{ gpz.adres }}</p>
+                    </div>
+                    <div class="result-info-item">
+                        <strong><i class="fas fa-road"></i> Odległość:</strong>
+                        <p>{{ gpz.odleglosc }}</p>
+                    </div>
+                    <div class="result-info-item">
+                        <strong><i class="fas fa-plug"></i> Dostępna moc:</strong>
+                        <p>{{ gpz.dostepna_moc }}</p>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endblock %}
