@@ -138,6 +138,9 @@ def logout():
 @login_required
 def wyszukaj_gpz():
     wyniki = []
+    user_lat = None
+    user_lng = None
+    user_address = None
     
     if request.method == 'POST':
         adres = request.form.get('adres')
@@ -145,20 +148,26 @@ def wyszukaj_gpz():
             wspolrzedne = geokoduj_adres(adres)
             if wspolrzedne:
                 lat, lon = wspolrzedne
+                user_lat = lat
+                user_lng = lon
+                user_address = adres
+                
                 najblizsze_gpz = znajdz_najblizsze_gpz(lat, lon)
-                wyniki = [
-                    {
+                wyniki = []
+                
+                for gpz, odleglosc in najblizsze_gpz:
+                    wyniki.append({
                         'nazwa': gpz.nazwa,
                         'adres': gpz.adres,
                         'odleglosc': f"{odleglosc:.2f} km",
-                        'dostepna_moc': f"{gpz.dostepna_moc} MW"
-                    }
-                    for gpz, odleglosc in najblizsze_gpz
-                ]
+                        'dostepna_moc': f"{gpz.dostepna_moc} MW",
+                        'latitude': gpz.latitude,
+                        'longitude': gpz.longitude
+                    })
             else:
                 flash('Nie udało się odnaleźć podanego adresu.')
     
-    return render_template('wyszukaj.html', wyniki=wyniki)
+    return render_template('wyszukaj.html', wyniki=wyniki, user_lat=user_lat, user_lng=user_lng, user_address=user_address)
 
 if __name__ == '__main__':
     app.run(debug=True)
