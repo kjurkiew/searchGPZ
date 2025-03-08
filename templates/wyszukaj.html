@@ -23,6 +23,17 @@
     .map-result-info p {
         margin: 5px 0;
     }
+    .adresy-lista {
+        margin-top: 1rem;
+        margin-bottom: 2rem;
+    }
+    .adres-item button {
+        transition: all 0.2s ease;
+    }
+    .adres-item button:hover {
+        background-color: var(--light-bg) !important;
+        transform: translateY(-2px);
+    }
 </style>
 {% endblock %}
 
@@ -37,6 +48,20 @@
         </div>
         <button type="submit"><i class="fas fa-search"></i> Wyszukaj</button>
     </form>
+    
+    {% if znalezione_adresy and not wyniki %}
+        <h3 style="margin-top: 1.5rem;"><i class="fas fa-list"></i> Znalezione adresy:</h3>
+        <div class="adresy-lista">
+            {% for adres in znalezione_adresy %}
+                <form method="POST" class="adres-item" style="margin-bottom: 0.5rem;">
+                    <input type="hidden" name="adres_id" value="{{ adres.id }}">
+                    <button type="submit" style="text-align: left; width: 100%; background: none; color: var(--primary); box-shadow: none; padding: 0.5rem; border: 1px solid #ddd; border-radius: var(--border-radius);">
+                        <i class="fas fa-map-marker-alt"></i> {{ adres.ulica }} {{ adres.nr }}, {{ adres.kod_pocztowy }} {{ adres.miasto }}
+                    </button>
+                </form>
+            {% endfor %}
+        </div>
+    {% endif %}
     
     {% if wyniki %}
         <h2 style="margin-top: 2rem; margin-bottom: 1rem;"><i class="fas fa-map"></i> Mapa wyników</h2>

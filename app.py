@@ -5,12 +5,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 import os
+import csv
+import pandas as pd
 from functools import wraps
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tajny-klucz-aplikacji'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baza.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['GPZ_CSV_PATH'] = 'gpz_database.csv'  # Ścieżka do pliku CSV
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -28,33 +31,71 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-# Model GPZ
-class GPZ(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nazwa = db.Column(db.String(100), nullable=False)
-    adres = db.Column(db.String(200), nullable=False)
-    latitude = db.Column(db.Float, nullable=False)
-    longitude = db.Column(db.Float, nullable=False)
-    dostepna_moc = db.Column(db.Float, nullable=False)  # w MW
-
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# Funkcja do wczytania danych GPZ z pliku CSV
+def load_gpz_data():
+    gpz_data = []
+    
+    # Sprawdź czy plik CSV istnieje, jeśli nie - utwórz przykładowy plik
+    if not os.path.exists(app.config['GPZ_CSV_PATH']):
+        with open(app.config['GPZ_CSV_PATH'], 'w', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ['nazwa', 'adres', 'miasto', 'kod_pocztowy', 'latitude', 'longitude', 'dostepna_moc']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            
+            writer.writeheader()
+            writer.writerow({
+                'nazwa': 'GPZ Centrum', 
+                'adres': 'ul. Przykładowa 1', 
+                'miasto': 'Warszawa', 
+                'kod_pocztowy': '00-001',
+                'latitude': 52.2297, 
+                'longitude': 21.0122, 
+                'dostepna_moc': 10.5
+            })
+            writer.writerow({
+                'nazwa': 'GPZ Wschód', 
+                'adres': 'ul. Wschodnia 15', 
+                'miasto': 'Warszawa', 
+                'kod_pocztowy': '00-123',
+                'latitude': 52.2360, 
+                'longitude': 21.0212, 
+                'dostepna_moc': 8.2
+            })
+            writer.writerow({
+                'nazwa': 'GPZ Zachód', 
+                'adres': 'ul. Zachodnia 7', 
+                'miasto': 'Warszawa', 
+                'kod_pocztowy': '00-456',
+                'latitude': 52.2299, 
+                'longitude': 20.9762, 
+                'dostepna_moc': 12.0
+            })
+    
+    # Wczytaj dane z pliku CSV
+    try:
+        df = pd.read_csv(app.config['GPZ_CSV_PATH'])
+        for _, row in df.iterrows():
+            gpz_data.append({
+                'nazwa': row['nazwa'],
+                'adres': row['adres'],
+                'miasto': row['miasto'],
+                'kod_pocztowy': row['kod_pocztowy'] if 'kod_pocztowy' in row and pd.notna(row['kod_pocztowy']) else '',
+                'pelny_adres': f"{row['adres']}, {row['miasto']}{', ' + row['kod_pocztowy'] if 'kod_pocztowy' in row and pd.notna(row['kod_pocztowy']) else ''}",
+                'latitude': float(row['latitude']),
+                'longitude': float(row['longitude']),
+                'dostepna_moc': float(row['dostepna_moc'])
+            })
+    except Exception as e:
+        print(f"Błąd wczytywania danych GPZ: {e}")
+    
+    return gpz_data
+
 # Inicjalizacja bazy danych
 with app.app_context():
     db.create_all()
-    
-    # Sprawdź czy mamy już dane GPZ w bazie, jeśli nie - dodaj przykładowe
-    if GPZ.query.count() == 0:
-        przykładowe_gpz = [
-            GPZ(nazwa="GPZ Centrum", adres="ul. Przykładowa 1, Warszawa", latitude=52.2297, longitude=21.0122, dostepna_moc=10.5),
-            GPZ(nazwa="GPZ Wschód", adres="ul. Wschodnia 15, Warszawa", latitude=52.2360, longitude=21.0212, dostepna_moc=8.2),
-            GPZ(nazwa="GPZ Zachód", adres="ul. Zachodnia 7, Warszawa", latitude=52.2299, longitude=20.9762, dostepna_moc=12.0),
-            # Tutaj dodaj więcej GPZ z Twojej listy
-        ]
-        db.session.add_all(przykładowe_gpz)
-        db.session.commit()
 
 # Funkcja do geokodowania adresu (zamiana adresu na współrzędne)
 def geokoduj_adres(adres):
@@ -69,12 +110,12 @@ def geokoduj_adres(adres):
 
 # Funkcja znajdująca najbliższe GPZ
 def znajdz_najblizsze_gpz(lat, lon, limit=3):
-    wszystkie_gpz = GPZ.query.all()
+    wszystkie_gpz = load_gpz_data()
     
     # Oblicz odległość dla każdego GPZ
     gpz_z_odlegloscia = []
     for gpz in wszystkie_gpz:
-        odleglosc = geodesic((lat, lon), (gpz.latitude, gpz.longitude)).kilometers
+        odleglosc = geodesic((lat, lon), (gpz['latitude'], gpz['longitude'])).kilometers
         gpz_z_odlegloscia.append((gpz, odleglosc))
     
     # Posortuj po odległości i zwróć 3 najbliższe
@@ -156,18 +197,67 @@ def wyszukaj_gpz():
                 wyniki = []
                 
                 for gpz, odleglosc in najblizsze_gpz:
+                    pelny_adres = f"{gpz['adres']}, {gpz['miasto']}"
+                    if gpz['kod_pocztowy']:
+                        pelny_adres += f", {gpz['kod_pocztowy']}"
+                    
                     wyniki.append({
-                        'nazwa': gpz.nazwa,
-                        'adres': gpz.adres,
+                        'nazwa': gpz['nazwa'],
+                        'adres': pelny_adres,
                         'odleglosc': f"{odleglosc:.2f} km",
-                        'dostepna_moc': f"{gpz.dostepna_moc} MW",
-                        'latitude': gpz.latitude,
-                        'longitude': gpz.longitude
+                        'dostepna_moc': f"{gpz['dostepna_moc']} MW",
+                        'latitude': gpz['latitude'],
+                        'longitude': gpz['longitude']
                     })
             else:
                 flash('Nie udało się odnaleźć podanego adresu.')
     
     return render_template('wyszukaj.html', wyniki=wyniki, user_lat=user_lat, user_lng=user_lng, user_address=user_address)
+
+# Panel administracyjny do zarządzania danymi GPZ
+@app.route('/admin/gpz', methods=['GET', 'POST'])
+@login_required
+def admin_gpz():
+    # Tutaj można dodać dodatkowe sprawdzenie, czy użytkownik ma uprawnienia administratora
+    
+    if request.method == 'POST':
+        if 'dodaj_gpz' in request.form:
+            nazwa = request.form.get('nazwa')
+            adres = request.form.get('adres')
+            miasto = request.form.get('miasto')
+            kod_pocztowy = request.form.get('kod_pocztowy', '')
+            
+            # Geokodowanie adresu
+            pelny_adres = f"{adres}, {miasto}, {kod_pocztowy}"
+            wspolrzedne = geokoduj_adres(pelny_adres)
+            
+            if wspolrzedne:
+                lat, lon = wspolrzedne
+                dostepna_moc = float(request.form.get('dostepna_moc', 0))
+                
+                # Dodanie nowego GPZ do pliku CSV
+                df = pd.read_csv(app.config['GPZ_CSV_PATH'])
+                nowy_wpis = pd.DataFrame([{
+                    'nazwa': nazwa,
+                    'adres': adres,
+                    'miasto': miasto,
+                    'kod_pocztowy': kod_pocztowy,
+                    'latitude': lat,
+                    'longitude': lon,
+                    'dostepna_moc': dostepna_moc
+                }])
+                
+                df = pd.concat([df, nowy_wpis], ignore_index=True)
+                df.to_csv(app.config['GPZ_CSV_PATH'], index=False)
+                
+                flash('Nowy GPZ został dodany pomyślnie.')
+            else:
+                flash('Nie udało się geokodować podanego adresu.')
+    
+    # Wczytaj aktualną listę GPZ
+    gpz_data = load_gpz_data()
+    
+    return render_template('admin_gpz.html', gpz_data=gpz_data)
 
 if __name__ == '__main__':
     app.run(debug=True)

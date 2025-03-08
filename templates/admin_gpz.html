@@ -1,0 +1,107 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <h2><i class="fas fa-cogs"></i> Panel administracyjny GPZ</h2>
+    <p style="margin-bottom: 1.5rem;">Zarządzaj bazą danych Głównych Punktów Zasilania.</p>
+    
+    <div class="admin-section">
+        <h3><i class="fas fa-plus-circle"></i> Dodaj nowy GPZ</h3>
+        <form method="POST">
+            <div class="form-group">
+                <label for="nazwa"><i class="fas fa-tag"></i> Nazwa GPZ</label>
+                <input type="text" id="nazwa" name="nazwa" required>
+            </div>
+            <div class="form-group">
+                <label for="adres"><i class="fas fa-map-marker-alt"></i> Adres (ulica i numer)</label>
+                <input type="text" id="adres" name="adres" required placeholder="np. ul. Marszałkowska 100">
+            </div>
+            <div class="form-group">
+                <label for="miasto"><i class="fas fa-city"></i> Miasto</label>
+                <input type="text" id="miasto" name="miasto" required placeholder="np. Warszawa">
+            </div>
+            <div class="form-group">
+                <label for="kod_pocztowy"><i class="fas fa-mail-bulk"></i> Kod pocztowy (opcjonalnie)</label>
+                <input type="text" id="kod_pocztowy" name="kod_pocztowy" placeholder="np. 00-001">
+            </div>
+            <div class="form-group">
+                <label for="dostepna_moc"><i class="fas fa-bolt"></i> Dostępna moc (MW)</label>
+                <input type="number" id="dostepna_moc" name="dostepna_moc" step="0.1" required>
+            </div>
+            <div style="text-align: center;">
+                <button type="submit" name="dodaj_gpz" value="1"><i class="fas fa-plus"></i> Dodaj GPZ</button>
+            </div>
+        </form>
+    </div>
+    
+    <div class="admin-section" style="margin-top: 2rem;">
+        <h3><i class="fas fa-list"></i> Lista GPZ</h3>
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Nazwa</th>
+                        <th>Adres</th>
+                        <th>Miasto</th>
+                        <th>Kod pocztowy</th>
+                        <th>Dostępna moc (MW)</th>
+                        <th>Współrzędne</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for gpz in gpz_data %}
+                    <tr>
+                        <td>{{ gpz.nazwa }}</td>
+                        <td>{{ gpz.adres }}</td>
+                        <td>{{ gpz.miasto }}</td>
+                        <td>{{ gpz.kod_pocztowy }}</td>
+                        <td>{{ gpz.dostepna_moc }}</td>
+                        <td>{{ gpz.latitude }}, {{ gpz.longitude }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <style>
+        .admin-section {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--box-shadow);
+            margin-bottom: 1.5rem;
+        }
+        
+        .admin-section h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: var(--primary);
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .admin-table th, .admin-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .admin-table th {
+            background-color: var(--light-bg);
+            color: var(--primary);
+        }
+        
+        .admin-table tr:hover {
+            background-color: var(--light-bg);
+        }
+    </style>
+{% endblock %}
