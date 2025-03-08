@@ -1,5 +1,31 @@
 {% extends "layout.html" %}
 
+{% block head_extra %}
+<!-- Dodaj bibliotekę Leaflet dla map -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.js"></script>
+<style>
+    #map {
+        height: 500px;
+        width: 100%;
+        margin-top: 1.5rem;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+    }
+    .map-result-info {
+        max-width: 300px;
+    }
+    .map-result-info h3 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        color: var(--primary);
+    }
+    .map-result-info p {
+        margin: 5px 0;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
     <h2><i class="fas fa-search-location"></i> Wyszukaj najbliższe GPZ</h2>
     <p style="margin-bottom: 1.5rem;">Wprowadź swój adres, aby znaleźć trzy najbliższe Główne Punkty Zasilania i sprawdzić dostępną moc.</p>
@@ -13,10 +39,116 @@
     </form>
     
     {% if wyniki %}
-        <h2 style="margin-top: 2rem; margin-bottom: 1rem;"><i class="fas fa-list-alt"></i> Wyniki wyszukiwania</h2>
+        <h2 style="margin-top: 2rem; margin-bottom: 1rem;"><i class="fas fa-map"></i> Mapa wyników</h2>
+        
+        <!-- Container dla mapy -->
+        <div id="map"></div>
+        
+        <!-- Ukryte dane dla JavaScript -->
+        <div id="mapData" style="display: none;" 
+            data-user-lat="{{ user_lat }}" 
+            data-user-lng="{{ user_lng }}"
+            data-user-address="{{ user_address }}">
+        </div>
+        
+        {% for gpz in wyniki %}
+        <div class="gpz-data" style="display: none;"
+            data-name="{{ gpz.nazwa }}"
+            data-address="{{ gpz.adres }}"
+            data-lat="{{ gpz.latitude }}"
+            data-lng="{{ gpz.longitude }}"
+            data-power="{{ gpz.dostepna_moc }}"
+            data-distance="{{ gpz.odleglosc }}">
+        </div>
+        {% endfor %}
+        
+        <script>
+            // Inicjalizacja mapy
+            const map = L.map('map');
+            
+            // Dodanie warstwy OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Pobranie danych użytkownika
+            const mapData = document.getElementById('mapData');
+            const userLat = parseFloat(mapData.dataset.userLat);
+            const userLng = parseFloat(mapData.dataset.userLng);
+            const userAddress = mapData.dataset.userAddress;
+            
+            // Dodanie markera dla lokalizacji użytkownika
+            const userMarker = L.marker([userLat, userLng], {
+                icon: L.divIcon({
+                    className: 'user-marker',
+                    html: '<i class="fas fa-home" style="color: #333; font-size: 24px;"></i>',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                })
+            }).addTo(map);
+            
+            userMarker.bindPopup(`<b>Twoja lokalizacja</b><br>${userAddress}`);
+            
+            // Dodanie markerów GPZ
+            const bounds = L.latLngBounds([[userLat, userLng]]);
+            const gpzNodes = document.querySelectorAll('.gpz-data');
+            
+            // Tablica kolorów dla markerów (od najlepszego do najgorszego)
+            const colors = ['#4cc9f0', '#4361ee', '#3a0ca3'];
+            
+            gpzNodes.forEach((node, index) => {
+                const lat = parseFloat(node.dataset.lat);
+                const lng = parseFloat(node.dataset.lng);
+                const name = node.dataset.name;
+                const address = node.dataset.address;
+                const power = node.dataset.power;
+                const distance = node.dataset.distance;
+                
+                // Dodaj punkt do granic mapy
+                bounds.extend([lat, lng]);
+                
+                // Marker dla GPZ
+                const gpzMarker = L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        className: 'gpz-marker',
+                        html: `<i class="fas fa-bolt" style="color: ${colors[index]}; font-size: 24px;"></i>`,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    })
+                }).addTo(map);
+                
+                // Informacje o GPZ w popup
+                const popupContent = `
+                    <div class="map-result-info">
+                        <h3>${name}</h3>
+                        <p><strong><i class="fas fa-map-marker-alt"></i> Adres:</strong> ${address}</p>
+                        <p><strong><i class="fas fa-road"></i> Odległość:</strong> ${distance}</p>
+                        <p><strong><i class="fas fa-plug"></i> Dostępna moc:</strong> ${power}</p>
+                    </div>
+                `;
+                
+                gpzMarker.bindPopup(popupContent);
+                
+                // Dodanie linii między użytkownikiem a GPZ
+                const line = L.polyline([[userLat, userLng], [lat, lng]], {
+                    color: colors[index],
+                    weight: 3,
+                    opacity: 0.7,
+                    dashArray: '5, 10'
+                }).addTo(map);
+            });
+            
+            // Dopasowanie widoku mapy do wszystkich markerów
+            map.fitBounds(bounds, { padding: [50, 50] });
+            
+            // Otwórz popup dla lokalizacji użytkownika
+            userMarker.openPopup();
+        </script>
+        
+        <h2 style="margin-top: 2rem; margin-bottom: 1rem;"><i class="fas fa-list-alt"></i> Lista wyników</h2>
         {% for gpz in wyniki %}
             <div class="result">
-                <h3><i class="fas fa-bolt"></i> {{ gpz.nazwa }}</h3>
+                <h3><i class="fas fa-bolt" style="color: {{ ['#4cc9f0', '#4361ee', '#3a0ca3'][loop.index0] }};"></i> {{ gpz.nazwa }}</h3>
                 <div class="result-info">
                     <div class="result-info-item">
                         <strong><i class="fas fa-map-marker-alt"></i> Adres:</strong>
