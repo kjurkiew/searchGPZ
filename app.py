@@ -8,12 +8,15 @@ import os
 import csv
 import pandas as pd
 from functools import wraps
+from datetime import datetime, timedelta
+import re
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'tajny-klucz-aplikacji'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'tajny-klucz-aplikacji')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///baza.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['GPZ_CSV_PATH'] = 'gpz_database.csv'  # Ścieżka do pliku CSV
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -35,7 +38,7 @@ class User(UserMixin, db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Add the UserQueries model to track user query limits
+# Dodaj model UserQueries do śledzenia limitów zapytań użytkownika.
 class UserQueries(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -133,40 +136,29 @@ def load_gpz_data():
     
     return gpz_data
     
-    # Wczytaj dane z pliku CSV
-    try:
-        df = pd.read_csv(app.config['GPZ_CSV_PATH'])
-        for _, row in df.iterrows():
-            gpz_data.append({
-                'nazwa': row['nazwa'],
-                'adres': row['adres'],
-                'miasto': row['miasto'],
-                'kod_pocztowy': row['kod_pocztowy'] if 'kod_pocztowy' in row and pd.notna(row['kod_pocztowy']) else '',
-                'pelny_adres': f"{row['adres']}, {row['miasto']}{', ' + row['kod_pocztowy'] if 'kod_pocztowy' in row and pd.notna(row['kod_pocztowy']) else ''}",
-                'latitude': float(row['latitude']),
-                'longitude': float(row['longitude']),
-                'dostepna_moc': float(row['dostepna_moc'])
-            })
-    except Exception as e:
-        print(f"Błąd wczytywania danych GPZ: {e}")
-    
-    return gpz_data
-
 # Inicjalizacja bazy danych
 with app.app_context():
     db.create_all()
 
 # Funkcja do geokodowania adresu (zamiana adresu na współrzędne)
 def geokoduj_adres(adres):
+    # Walidacja danych wejściowych
+    if not adres or not isinstance(adres, str):
+        return None
+        
+    # Usunięcie potencjalnie niebezpiecznych znaków
+    adres = re.sub(r'[<>\'";]', '', adres)
+    
     geolocator = Nominatim(user_agent="gpz-finder")
     try:
         location = geolocator.geocode(adres + ", Polska")
         if location:
             return (location.latitude, location.longitude)
         return None
-    except:
+    except Exception as e:
+        print(f"Błąd geokodowania: {e}")
         return None
-
+    
 # Funkcja znajdująca najbliższe GPZ
 def znajdz_najblizsze_gpz(lat, lon, limit=3):
     wszystkie_gpz = load_gpz_data()
@@ -192,17 +184,35 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        # Regeneracja ID sesji przy logowaniu dla bezpieczeństwa
+        session.clear()
+        
         username = request.form.get('username')
         password = request.form.get('password')
+        
+        # Walidacja danych wejściowych
+        if not username or not password:
+            flash('Proszę wypełnić wszystkie pola.')
+            return render_template('login.html')
+            
+        # Usunięcie potencjalnie niebezpiecznych znaków
+        username = re.sub(r'[<>\'";]', '', username)
         
         user = User.query.filter_by(username=username).first()
         
         if user and user.check_password(password):
             login_user(user)
-            return redirect(url_for('wyszukaj_gpz'))
+            session.permanent = True  # Włącz timeout sesji
+            
+            # Przekierowanie do żądanej strony lub domyślnie do wyszukiwarki
+            next_page = request.args.get('next')
+            if not next_page or not next_page.startswith('/'):
+                next_page = url_for('wyszukaj_gpz')
+                
+            return redirect(next_page)
         else:
             flash('Nieprawidłowa nazwa użytkownika lub hasło.')
-    
+            
     return render_template('login.html')
 
 # Rejestracja
@@ -212,18 +222,35 @@ def register():
         username = request.form.get('username')
         password = request.form.get('password')
         
+        # Walidacja danych wejściowych
+        if not username or not password:
+            flash('Proszę wypełnić wszystkie pola.')
+            return render_template('register.html')
+            
+        # Usunięcie potencjalnie niebezpiecznych znaków
+        username = re.sub(r'[<>\'";]', '', username)
+        
+        # Sprawdzenie długości nazwy użytkownika
+        if len(username) < 3 or len(username) > 50:
+            flash('Nazwa użytkownika musi mieć od 3 do 50 znaków.')
+            return render_template('register.html')
+            
         existing_user = User.query.filter_by(username=username).first()
         
         if existing_user:
             flash('Nazwa użytkownika jest już zajęta.')
         else:
-            new_user = User(username=username)
-            new_user.set_password(password)
-            db.session.add(new_user)
-            db.session.commit()
-            flash('Rejestracja zakończona pomyślnie. Możesz się teraz zalogować.')
-            return redirect(url_for('login'))
-    
+            try:
+                new_user = User(username=username)
+                new_user.set_password(password)
+                db.session.add(new_user)
+                db.session.commit()
+                flash('Rejestracja zakończona pomyślnie. Możesz się teraz zalogować.')
+                return redirect(url_for('login'))
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Wystąpił błąd podczas rejestracji: {str(e)}')
+                
     return render_template('register.html')
 
 # Wylogowanie
@@ -243,25 +270,38 @@ def wyszukaj_gpz():
     user_address = None
     
     # Sprawdź czy użytkownik ma dostępne zapytania
-    from datetime import datetime
     current_month = datetime.now().strftime('%Y-%m')
     
-    user_queries = UserQueries.query.filter_by(user_id=current_user.id, month=current_month).first()
-    
-    if not user_queries:
-        user_queries = UserQueries(user_id=current_user.id, month=current_month, query_count=0)
-        db.session.add(user_queries)
-        db.session.commit()
-    
-    pozostale_zapytania = 100 - user_queries.query_count
+    try:
+        user_queries = UserQueries.query.filter_by(user_id=current_user.id, month=current_month).first()
+        if not user_queries:
+            user_queries = UserQueries(user_id=current_user.id, month=current_month, query_count=0)
+            db.session.add(user_queries)
+            db.session.commit()
+            
+        pozostale_zapytania = 100 - user_queries.query_count
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Wystąpił błąd podczas sprawdzania limitów zapytań: {str(e)}')
+        pozostale_zapytania = 0
     
     if request.method == 'POST':
         adres = request.form.get('adres')
+        
+        # Walidacja danych wejściowych
+        if not adres:
+            flash('Proszę wprowadzić adres.')
+            return render_template('wyszukaj.html', wyniki=wyniki, user_lat=user_lat, user_lng=user_lng,
+                                  user_address=user_address, pozostale_zapytania=pozostale_zapytania)
+                                  
+        # Usunięcie potencjalnie niebezpiecznych znaków
+        adres = re.sub(r'[<>\'";]', '', adres)
+        
         if adres:
             # Sprawdź czy użytkownik ma dostępne zapytania
             if pozostale_zapytania <= 0:
                 flash('Wykorzystałeś limit zapytań na ten miesiąc. Limit zostanie odnowiony na początku następnego miesiąca.')
-                return render_template('wyszukaj.html', wyniki=wyniki, user_lat=user_lat, user_lng=user_lng, 
+                return render_template('wyszukaj.html', wyniki=wyniki, user_lat=user_lat, user_lng=user_lng,
                                       user_address=user_address, pozostale_zapytania=pozostale_zapytania)
             
             wspolrzedne = geokoduj_adres(adres)
@@ -271,38 +311,42 @@ def wyszukaj_gpz():
                 user_lng = lon
                 user_address = adres
                 
-                najblizsze_gpz = znajdz_najblizsze_gpz(lat, lon)
-                wyniki = []
-                
-                for gpz, odleglosc in najblizsze_gpz:
-                    pelny_adres = f"{gpz['adres']}, {gpz['miasto']}"
-                    if gpz['kod_pocztowy']:
-                        pelny_adres += f", {gpz['kod_pocztowy']}"
+                try:
+                    najblizsze_gpz = znajdz_najblizsze_gpz(lat, lon)
+                    wyniki = []
                     
-                    wyniki.append({
-                        'nazwa': gpz['nazwa'],
-                        'adres': pelny_adres,
-                        'odleglosc': f"{odleglosc:.2f} km",
-                        'dostepna_moc': f"{gpz['dostepna_moc']} MW",
-                        'latitude': gpz['latitude'],
-                        'longitude': gpz['longitude'],
-                        'dystrybutor': gpz['dystrybutor'],
-                        'moc_2025': gpz['moc_2025'],
-                        'moc_2026': gpz['moc_2026'],
-                        'moc_2027': gpz['moc_2027'],
-                        'moc_2028': gpz['moc_2028'],
-                        'moc_2029': gpz['moc_2029'],
-                        'moc_2030': gpz['moc_2030']
-                    })
-                
-                # Zwiększ licznik zapytań
-                user_queries.query_count += 1
-                db.session.commit()
-                pozostale_zapytania = 100 - user_queries.query_count
+                    for gpz, odleglosc in najblizsze_gpz:
+                        pelny_adres = f"{gpz['adres']}, {gpz['miasto']}"
+                        if gpz['kod_pocztowy']:
+                            pelny_adres += f", {gpz['kod_pocztowy']}"
+                            
+                        wyniki.append({
+                            'nazwa': gpz['nazwa'],
+                            'adres': pelny_adres,
+                            'odleglosc': f"{odleglosc:.2f} km",
+                            'dostepna_moc': f"{gpz['dostepna_moc']} MW",
+                            'latitude': gpz['latitude'],
+                            'longitude': gpz['longitude'],
+                            'dystrybutor': gpz['dystrybutor'],
+                            'moc_2025': gpz['moc_2025'],
+                            'moc_2026': gpz['moc_2026'],
+                            'moc_2027': gpz['moc_2027'],
+                            'moc_2028': gpz['moc_2028'],
+                            'moc_2029': gpz['moc_2029'],
+                            'moc_2030': gpz['moc_2030']
+                        })
+                    
+                    # Zwiększ licznik zapytań
+                    user_queries.query_count += 1
+                    db.session.commit()
+                    pozostale_zapytania = 100 - user_queries.query_count
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'Wystąpił błąd podczas wyszukiwania: {str(e)}')
             else:
                 flash('Nie udało się odnaleźć podanego adresu.')
     
-    return render_template('wyszukaj.html', wyniki=wyniki, user_lat=user_lat, user_lng=user_lng, 
+    return render_template('wyszukaj.html', wyniki=wyniki, user_lat=user_lat, user_lng=user_lng,
                           user_address=user_address, pozostale_zapytania=pozostale_zapytania)
 
 # Panel administracyjny do zarządzania danymi GPZ
