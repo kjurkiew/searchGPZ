@@ -133,25 +133,6 @@ def load_gpz_data():
     
     return gpz_data
     
-    # Wczytaj dane z pliku CSV
-    try:
-        df = pd.read_csv(app.config['GPZ_CSV_PATH'])
-        for _, row in df.iterrows():
-            gpz_data.append({
-                'nazwa': row['nazwa'],
-                'adres': row['adres'],
-                'miasto': row['miasto'],
-                'kod_pocztowy': row['kod_pocztowy'] if 'kod_pocztowy' in row and pd.notna(row['kod_pocztowy']) else '',
-                'pelny_adres': f"{row['adres']}, {row['miasto']}{', ' + row['kod_pocztowy'] if 'kod_pocztowy' in row and pd.notna(row['kod_pocztowy']) else ''}",
-                'latitude': float(row['latitude']),
-                'longitude': float(row['longitude']),
-                'dostepna_moc': float(row['dostepna_moc'])
-            })
-    except Exception as e:
-        print(f"Błąd wczytywania danych GPZ: {e}")
-    
-    return gpz_data
-
 # Inicjalizacja bazy danych
 with app.app_context():
     db.create_all()
