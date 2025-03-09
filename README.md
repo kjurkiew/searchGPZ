@@ -10,13 +10,18 @@ searchGPZ is an application that solves the problem of finding a suitable locati
 
 - **Registration and Login** – Users can create accounts and log in to the application.  
 - **Address Search** – Functionality allowing users to enter an address and find the nearest GPZs.  
-- **Power Availability** – Displays information about the available power at each GPZ.  
+- **Power Availability** – Displays information about the available power at each GPZ.
+- **Future Capacity Projections** - Shows power capacity forecasts for years 2025-2030.
+- **Monthly Query Limit** - Users have a limit of 100 queries per month.
+- **Admin Panel** - Administrators can manage GPZ data through a dedicated interface.  
 
 ## Technologies Used
 
 - **Python** – The primary programming language.  
 - **Flask** – The web framework used to build the application.  
-- **Geopy** – A library for geolocation and geographic data processing.  
+- **Geopy** – A library for geolocation and geographic data processing.
+- **SQLAlchemy** - ORM for database management.
+- **Pandas** - For data processing and CSV handling.
 - **HTML** – Used for creating the user interface.  
 
 ## Installation
@@ -43,4 +48,4 @@ Enter a location to find the nearest GPZs.
 We plan to introduce a token system, which will allow users to access the application for a fee. Each entry to the site will require a certain number of tokens.
 
 ## License
-This project is licensed under the MIT License - see the LICENSE file for details.
+Copyright © 2025. All Rights Reserved.
