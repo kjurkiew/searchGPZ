@@ -35,6 +35,17 @@ class User(UserMixin, db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# Add the UserQueries model to track user query limits
+class UserQueries(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    month = db.Column(db.String(7), nullable=False)  # Format: YYYY-MM
+    query_count = db.Column(db.Integer, default=0)
+    
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'month', name='unique_user_month'),
+    )
+
 # Funkcja do wczytania danych GPZ z pliku CSV
 def load_gpz_data():
     gpz_data = []
@@ -42,7 +53,8 @@ def load_gpz_data():
     # Sprawdź czy plik CSV istnieje, jeśli nie - utwórz przykładowy plik
     if not os.path.exists(app.config['GPZ_CSV_PATH']):
         with open(app.config['GPZ_CSV_PATH'], 'w', newline='', encoding='utf-8') as csvfile:
-            fieldnames = ['nazwa', 'adres', 'miasto', 'kod_pocztowy', 'latitude', 'longitude', 'dostepna_moc']
+            fieldnames = ['nazwa', 'adres', 'miasto', 'kod_pocztowy', 'latitude', 'longitude', 'dostepna_moc', 
+                         'dystrybutor', 'moc_2025', 'moc_2026', 'moc_2027', 'moc_2028', 'moc_2029', 'moc_2030']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             
             writer.writeheader()
@@ -53,7 +65,14 @@ def load_gpz_data():
                 'kod_pocztowy': '00-001',
                 'latitude': 52.2297, 
                 'longitude': 21.0122, 
-                'dostepna_moc': 10.5
+                'dostepna_moc': 10.5,
+                'dystrybutor': 'PGE',
+                'moc_2025': 10.5,
+                'moc_2026': 11.2,
+                'moc_2027': 12.0,
+                'moc_2028': 12.8,
+                'moc_2029': 13.5,
+                'moc_2030': 14.2
             })
             writer.writerow({
                 'nazwa': 'GPZ Wschód', 
@@ -62,7 +81,14 @@ def load_gpz_data():
                 'kod_pocztowy': '00-123',
                 'latitude': 52.2360, 
                 'longitude': 21.0212, 
-                'dostepna_moc': 8.2
+                'dostepna_moc': 8.2,
+                'dystrybutor': 'Tauron',
+                'moc_2025': 8.2,
+                'moc_2026': 8.5,
+                'moc_2027': 9.0,
+                'moc_2028': 9.5,
+                'moc_2029': 10.0,
+                'moc_2030': 10.5
             })
             writer.writerow({
                 'nazwa': 'GPZ Zachód', 
@@ -71,8 +97,41 @@ def load_gpz_data():
                 'kod_pocztowy': '00-456',
                 'latitude': 52.2299, 
                 'longitude': 20.9762, 
-                'dostepna_moc': 12.0
+                'dostepna_moc': 12.0,
+                'dystrybutor': 'Enea',
+                'moc_2025': 12.0,
+                'moc_2026': 12.5,
+                'moc_2027': 13.0,
+                'moc_2028': 13.5,
+                'moc_2029': 14.0,
+                'moc_2030': 14.5
             })
+    
+    # Wczytaj dane z pliku CSV
+    try:
+        df = pd.read_csv(app.config['GPZ_CSV_PATH'])
+        for _, row in df.iterrows():
+            gpz_data.append({
+                'nazwa': row['nazwa'],
+                'adres': row['adres'],
+                'miasto': row['miasto'],
+                'kod_pocztowy': row['kod_pocztowy'] if 'kod_pocztowy' in row and pd.notna(row['kod_pocztowy']) else '',
+                'pelny_adres': f"{row['adres']}, {row['miasto']}{', ' + row['kod_pocztowy'] if 'kod_pocztowy' in row and pd.notna(row['kod_pocztowy']) else ''}",
+                'latitude': float(row['latitude']),
+                'longitude': float(row['longitude']),
+                'dostepna_moc': float(row['dostepna_moc']),
+                'dystrybutor': row['dystrybutor'] if 'dystrybutor' in row and pd.notna(row['dystrybutor']) else 'Nieznany',
+                'moc_2025': float(row['moc_2025']) if 'moc_2025' in row and pd.notna(row['moc_2025']) else 0.0,
+                'moc_2026': float(row['moc_2026']) if 'moc_2026' in row and pd.notna(row['moc_2026']) else 0.0,
+                'moc_2027': float(row['moc_2027']) if 'moc_2027' in row and pd.notna(row['moc_2027']) else 0.0,
+                'moc_2028': float(row['moc_2028']) if 'moc_2028' in row and pd.notna(row['moc_2028']) else 0.0,
+                'moc_2029': float(row['moc_2029']) if 'moc_2029' in row and pd.notna(row['moc_2029']) else 0.0,
+                'moc_2030': float(row['moc_2030']) if 'moc_2030' in row and pd.notna(row['moc_2030']) else 0.0
+            })
+    except Exception as e:
+        print(f"Błąd wczytywania danych GPZ: {e}")
+    
+    return gpz_data
     
     # Wczytaj dane z pliku CSV
     try:
@@ -183,9 +242,28 @@ def wyszukaj_gpz():
     user_lng = None
     user_address = None
     
+    # Sprawdź czy użytkownik ma dostępne zapytania
+    from datetime import datetime
+    current_month = datetime.now().strftime('%Y-%m')
+    
+    user_queries = UserQueries.query.filter_by(user_id=current_user.id, month=current_month).first()
+    
+    if not user_queries:
+        user_queries = UserQueries(user_id=current_user.id, month=current_month, query_count=0)
+        db.session.add(user_queries)
+        db.session.commit()
+    
+    pozostale_zapytania = 100 - user_queries.query_count
+    
     if request.method == 'POST':
         adres = request.form.get('adres')
         if adres:
+            # Sprawdź czy użytkownik ma dostępne zapytania
+            if pozostale_zapytania <= 0:
+                flash('Wykorzystałeś limit zapytań na ten miesiąc. Limit zostanie odnowiony na początku następnego miesiąca.')
+                return render_template('wyszukaj.html', wyniki=wyniki, user_lat=user_lat, user_lng=user_lng, 
+                                      user_address=user_address, pozostale_zapytania=pozostale_zapytania)
+            
             wspolrzedne = geokoduj_adres(adres)
             if wspolrzedne:
                 lat, lon = wspolrzedne
@@ -207,12 +285,25 @@ def wyszukaj_gpz():
                         'odleglosc': f"{odleglosc:.2f} km",
                         'dostepna_moc': f"{gpz['dostepna_moc']} MW",
                         'latitude': gpz['latitude'],
-                        'longitude': gpz['longitude']
+                        'longitude': gpz['longitude'],
+                        'dystrybutor': gpz['dystrybutor'],
+                        'moc_2025': gpz['moc_2025'],
+                        'moc_2026': gpz['moc_2026'],
+                        'moc_2027': gpz['moc_2027'],
+                        'moc_2028': gpz['moc_2028'],
+                        'moc_2029': gpz['moc_2029'],
+                        'moc_2030': gpz['moc_2030']
                     })
+                
+                # Zwiększ licznik zapytań
+                user_queries.query_count += 1
+                db.session.commit()
+                pozostale_zapytania = 100 - user_queries.query_count
             else:
                 flash('Nie udało się odnaleźć podanego adresu.')
     
-    return render_template('wyszukaj.html', wyniki=wyniki, user_lat=user_lat, user_lng=user_lng, user_address=user_address)
+    return render_template('wyszukaj.html', wyniki=wyniki, user_lat=user_lat, user_lng=user_lng, 
+                          user_address=user_address, pozostale_zapytania=pozostale_zapytania)
 
 # Panel administracyjny do zarządzania danymi GPZ
 @app.route('/admin/gpz', methods=['GET', 'POST'])
@@ -226,6 +317,7 @@ def admin_gpz():
             adres = request.form.get('adres')
             miasto = request.form.get('miasto')
             kod_pocztowy = request.form.get('kod_pocztowy', '')
+            dystrybutor = request.form.get('dystrybutor')
             
             # Geokodowanie adresu
             pelny_adres = f"{adres}, {miasto}, {kod_pocztowy}"
@@ -234,6 +326,12 @@ def admin_gpz():
             if wspolrzedne:
                 lat, lon = wspolrzedne
                 dostepna_moc = float(request.form.get('dostepna_moc', 0))
+                moc_2025 = float(request.form.get('moc_2025', 0))
+                moc_2026 = float(request.form.get('moc_2026', 0))
+                moc_2027 = float(request.form.get('moc_2027', 0))
+                moc_2028 = float(request.form.get('moc_2028', 0))
+                moc_2029 = float(request.form.get('moc_2029', 0))
+                moc_2030 = float(request.form.get('moc_2030', 0))
                 
                 # Dodanie nowego GPZ do pliku CSV
                 df = pd.read_csv(app.config['GPZ_CSV_PATH'])
@@ -244,7 +342,14 @@ def admin_gpz():
                     'kod_pocztowy': kod_pocztowy,
                     'latitude': lat,
                     'longitude': lon,
-                    'dostepna_moc': dostepna_moc
+                    'dostepna_moc': dostepna_moc,
+                    'dystrybutor': dystrybutor,
+                    'moc_2025': moc_2025,
+                    'moc_2026': moc_2026,
+                    'moc_2027': moc_2027,
+                    'moc_2028': moc_2028,
+                    'moc_2029': moc_2029,
+                    'moc_2030': moc_2030
                 }])
                 
                 df = pd.concat([df, nowy_wpis], ignore_index=True)

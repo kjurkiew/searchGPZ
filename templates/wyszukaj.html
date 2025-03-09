@@ -83,7 +83,8 @@
             data-lat="{{ gpz.latitude }}"
             data-lng="{{ gpz.longitude }}"
             data-power="{{ gpz.dostepna_moc }}"
-            data-distance="{{ gpz.odleglosc }}">
+            data-distance="{{ gpz.odleglosc }}"
+            data-distributor="{{ gpz.dystrybutor }}">
         </div>
         {% endfor %}
         
@@ -149,8 +150,14 @@
                         <p><strong><i class="fas fa-map-marker-alt"></i> Adres:</strong> ${address}</p>
                         <p><strong><i class="fas fa-road"></i> Odległość:</strong> ${distance}</p>
                         <p><strong><i class="fas fa-plug"></i> Dostępna moc:</strong> ${power}</p>
+                        <p><strong><i class="fas fa-industry"></i> Dystrybutor:</strong> ${node.dataset.distributor}</p>
                     </div>
-                `;
+                    <div style="margin-bottom: 1.5rem; text-align: right; color: var(--text-light);">
+                        <i class="fas fa-search"></i> Pozostałe zapytania w tym miesiącu: <strong>{{ pozostale_zapytania }}</strong>
+                    </div>
+    
+                    <h2 style="margin-top: 2rem; margin-bottom: 1rem;"><i class="fas fa-map"></i> Mapa wyników</h2>
+                    `;
                 
                 gpzMarker.bindPopup(popupContent);
                 
@@ -172,23 +179,57 @@
         
         <h2 style="margin-top: 2rem; margin-bottom: 1rem;"><i class="fas fa-list-alt"></i> Lista wyników</h2>
         {% for gpz in wyniki %}
-            <div class="result">
-                <h3><i class="fas fa-bolt" style="color: {{ ['#4cc9f0', '#4361ee', '#3a0ca3'][loop.index0] }};"></i> {{ gpz.nazwa }}</h3>
+        <div class="result">
+            <h3><i class="fas fa-bolt" style="color: {{ ['#4cc9f0', '#4361ee', '#3a0ca3'][loop.index0] }};"></i> {{ gpz.nazwa }}</h3>
+            <div class="result-info">
+                <div class="result-info-item">
+                    <strong><i class="fas fa-map-marker-alt"></i> Adres:</strong>
+                    <p>{{ gpz.adres }}</p>
+                </div>
+                <div class="result-info-item">
+                    <strong><i class="fas fa-road"></i> Odległość:</strong>
+                    <p>{{ gpz.odleglosc }}</p>
+                </div>
+                <div class="result-info-item">
+                    <strong><i class="fas fa-plug"></i> Dostępna moc:</strong>
+                    <p>{{ gpz.dostepna_moc }}</p>
+                </div>
+                <div class="result-info-item">
+                    <strong><i class="fas fa-industry"></i> Dystrybutor:</strong>
+                    <p>{{ gpz.dystrybutor }}</p>
+                </div>
+            </div>
+            
+            <div style="margin-top: 1rem;">
+                <h4 style="color: var(--secondary);"><i class="fas fa-calendar-alt"></i> Prognoza dostępnej mocy przyłączeniowej (MW)</h4>
                 <div class="result-info">
                     <div class="result-info-item">
-                        <strong><i class="fas fa-map-marker-alt"></i> Adres:</strong>
-                        <p>{{ gpz.adres }}</p>
+                        <strong>2025:</strong>
+                        <p>{{ gpz.moc_2025 }} MW</p>
                     </div>
                     <div class="result-info-item">
-                        <strong><i class="fas fa-road"></i> Odległość:</strong>
-                        <p>{{ gpz.odleglosc }}</p>
+                        <strong>2026:</strong>
+                        <p>{{ gpz.moc_2026 }} MW</p>
                     </div>
                     <div class="result-info-item">
-                        <strong><i class="fas fa-plug"></i> Dostępna moc:</strong>
-                        <p>{{ gpz.dostepna_moc }}</p>
+                        <strong>2027:</strong>
+                        <p>{{ gpz.moc_2027 }} MW</p>
+                    </div>
+                    <div class="result-info-item">
+                        <strong>2028:</strong>
+                        <p>{{ gpz.moc_2028 }} MW</p>
+                    </div>
+                    <div class="result-info-item">
+                        <strong>2029:</strong>
+                        <p>{{ gpz.moc_2029 }} MW</p>
+                    </div>
+                    <div class="result-info-item">
+                        <strong>2030:</strong>
+                        <p>{{ gpz.moc_2030 }} MW</p>
                     </div>
                 </div>
             </div>
+        </div>
         {% endfor %}
     {% endif %}
 {% endblock %}
