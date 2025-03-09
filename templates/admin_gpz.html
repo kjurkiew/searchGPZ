@@ -4,31 +4,72 @@
     <h2><i class="fas fa-cogs"></i> Panel administracyjny GPZ</h2>
     <p style="margin-bottom: 1.5rem;">Zarządzaj bazą danych Głównych Punktów Zasilania.</p>
     
-    <div class="admin-section">
-        <h3><i class="fas fa-plus-circle"></i> Dodaj nowy GPZ</h3>
-        <form method="POST">
-            <div class="form-group">
-                <label for="nazwa"><i class="fas fa-tag"></i> Nazwa GPZ</label>
-                <input type="text" id="nazwa" name="nazwa" required>
-            </div>
-            <div class="form-group">
-                <label for="adres"><i class="fas fa-map-marker-alt"></i> Adres (ulica i numer)</label>
-                <input type="text" id="adres" name="adres" required placeholder="np. ul. Marszałkowska 100">
-            </div>
-            <div class="form-group">
-                <label for="miasto"><i class="fas fa-city"></i> Miasto</label>
-                <input type="text" id="miasto" name="miasto" required placeholder="np. Warszawa">
-            </div>
-            <div class="form-group">
-                <label for="kod_pocztowy"><i class="fas fa-mail-bulk"></i> Kod pocztowy (opcjonalnie)</label>
-                <input type="text" id="kod_pocztowy" name="kod_pocztowy" placeholder="np. 00-001">
-            </div>
-            <div class="form-group">
-                <label for="dostepna_moc"><i class="fas fa-bolt"></i> Dostępna moc (MW)</label>
-                <input type="number" id="dostepna_moc" name="dostepna_moc" step="0.1" required>
-            </div>
-            <div style="text-align: center;">
-                <button type="submit" name="dodaj_gpz" value="1"><i class="fas fa-plus"></i> Dodaj GPZ</button>
+            <div class="admin-section">
+                <h3><i class="fas fa-plus-circle"></i> Dodaj nowy GPZ</h3>
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="nazwa"><i class="fas fa-tag"></i> Nazwa GPZ</label>
+                        <input type="text" id="nazwa" name="nazwa" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="adres"><i class="fas fa-map-marker-alt"></i> Adres (ulica i numer)</label>
+                        <input type="text" id="adres" name="adres" required placeholder="np. ul. Marszałkowska 100">
+                    </div>
+                    <div class="form-group">
+                        <label for="miasto"><i class="fas fa-city"></i> Miasto</label>
+                        <input type="text" id="miasto" name="miasto" required placeholder="np. Warszawa">
+                    </div>
+                    <div class="form-group">
+                        <label for="kod_pocztowy"><i class="fas fa-mail-bulk"></i> Kod pocztowy (opcjonalnie)</label>
+                        <input type="text" id="kod_pocztowy" name="kod_pocztowy" placeholder="np. 00-001">
+                    </div>
+                    <div class="form-group">
+                        <label for="dostepna_moc"><i class="fas fa-bolt"></i> Dostępna moc (MW)</label>
+                        <input type="number" id="dostepna_moc" name="dostepna_moc" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dystrybutor"><i class="fas fa-industry"></i> Dystrybutor energii</label>
+                        <select id="dystrybutor" name="dystrybutor" required>
+                            <option value="Tauron">Tauron</option>
+                            <option value="Enea">Enea</option>
+                            <option value="Energa">Energa</option>
+                            <option value="PGE">PGE</option>
+                            <option value="E.ON">E.ON</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-alt"></i> Prognoza dostępnej mocy przyłączeniowej (MW)</label>
+                        <div class="moc-prognozy">
+                            <div class="moc-prognoza-row">
+                                <label for="moc_2025">2025:</label>
+                                <input type="number" id="moc_2025" name="moc_2025" step="0.1" required>
+                            </div>
+                            <div class="moc-prognoza-row">
+                                <label for="moc_2026">2026:</label>
+                                <input type="number" id="moc_2026" name="moc_2026" step="0.1" required>
+                            </div>
+                            <div class="moc-prognoza-row">
+                                <label for="moc_2027">2027:</label>
+                                <input type="number" id="moc_2027" name="moc_2027" step="0.1" required>
+                            </div>
+                            <div class="moc-prognoza-row">
+                                <label for="moc_2028">2028:</label>
+                                <input type="number" id="moc_2028" name="moc_2028" step="0.1" required>
+                            </div>
+                            <div class="moc-prognoza-row">
+                                <label for="moc_2029">2029:</label>
+                                <input type="number" id="moc_2029" name="moc_2029" step="0.1" required>
+                            </div>
+                            <div class="moc-prognoza-row">
+                                <label for="moc_2030">2030:</label>
+                                <input type="number" id="moc_2030" name="moc_2030" step="0.1" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="text-align: center;">
+                        <button type="submit" name="dodaj_gpz" value="1"><i class="fas fa-plus"></i> Dodaj GPZ</button>
+                    </div>
+                </form>
             </div>
         </form>
     </div>
@@ -44,6 +85,7 @@
                         <th>Miasto</th>
                         <th>Kod pocztowy</th>
                         <th>Dostępna moc (MW)</th>
+                        <th>Dystrybutor</th>
                         <th>Współrzędne</th>
                     </tr>
                 </thead>
@@ -55,6 +97,7 @@
                         <td>{{ gpz.miasto }}</td>
                         <td>{{ gpz.kod_pocztowy }}</td>
                         <td>{{ gpz.dostepna_moc }}</td>
+                        <td>{{ gpz.dystrybutor }}</td>
                         <td>{{ gpz.latitude }}, {{ gpz.longitude }}</td>
                     </tr>
                     {% endfor %}
@@ -102,6 +145,41 @@
         
         .admin-table tr:hover {
             background-color: var(--light-bg);
+        }
+        .moc-prognozy {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .moc-prognoza-row {
+            display: flex;
+            align-items: center;
+        }
+
+        .moc-prognoza-row label {
+            width: 60px;
+            margin-bottom: 0;
+        }
+
+        .moc-prognoza-row input {
+            flex: 1;
+        }
+
+        select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.3);
         }
     </style>
 {% endblock %}
