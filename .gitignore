@@ -1,0 +1,42 @@
+# Python bytecode files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# SQLite database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment and virtual env directories
+venv/
+env/
+ENV/
+.env
+.venv
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Unit test / coverage reports
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+*.cover
+
+# Flask instance folder
+instance/
+
+# Logs
+*.log
+
+# Local development configuration
+.idea/
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db
