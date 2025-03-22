@@ -1,4 +1,4 @@
-name: searchGPZ CI/CD
+name: searchGPZ CI
 
 on:
   push:
