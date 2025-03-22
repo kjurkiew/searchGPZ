@@ -1,0 +1,12 @@
+nazwa,adres,miasto,kod_pocztowy,latitude,longitude,dostepna_moc,dystrybutor,moc_2025,moc_2026,moc_2027,moc_2028,moc_2029,moc_2030
+GPZ Centrum,ul. Przykładowa 1,Warszawa,00-001,52.2297,21.0122,10.5,PGE,10.5,11.2,12.0,12.8,13.5,14.2
+GPZ Wschód,ul. Wschodnia 15,Warszawa,00-123,52.236,21.0212,8.2,Tauron,8.2,8.5,9.0,9.5,10.0,10.5
+GPZ Zachód,ul. Zachodnia 7,Warszawa,00-456,52.2299,20.9762,12.0,Enea,12.0,12.5,13.0,13.5,14.0,14.5
+GPZ Północ,ul. Północna 22,Warszawa,01-234,52.245,21.01,9.8,Enea,12.0,12.5,13.0,13.5,14.0,14.5
+GPZ Południe,ul. Południowa 44,Warszawa,02-345,52.215,21.015,11.3,Enea,12.0,12.5,13.0,13.5,14.0,14.5
+GPZ Praga,ul. Targowa 10,Warszawa,03-456,52.25,21.035,7.5,Enea,12.0,12.5,13.0,13.5,14.0,14.5
+GPZ Oława,rynek 1,Oława,,50.94282795,17.295358531310676,0.0,Enea,12.0,12.5,13.0,13.5,14.0,14.5
+Białystok,Rynek 1,Białystok,,53.1289324,23.153422288926308,0.0,Enea,12.0,12.5,13.0,13.5,14.0,14.5
+Opole,Rynek 1,Opole,,50.6679939,17.92193818674555,1.0,Enea,12.0,12.5,13.0,13.5,14.0,14.5
+Szczecin,Rynek 1,Szczecin,,53.42434125,14.5604632887476,1.0,Enea,12.0,12.5,13.0,13.5,14.0,14.5
+Prudnik,Rynek 1,Prudnik,48-200,50.32152535,17.580587642949247,1.0,Tauron,1.0,1.0,1.0,1.0,1.0,1.0
