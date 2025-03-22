@@ -1,4 +1,5 @@
 # searchGPZ
+[![searchGPZ CI](https://github.com/kjurkiew/searchGPZ/actions/workflows/ci.yml/badge.svg)](https://github.com/kjurkiew/searchGPZ/actions/workflows/ci.yml)
 
 An application for finding the nearest GPZ with available power, facilitating the installation of electrical systems such as solar panels, wind turbines, and biogas plants.
 
