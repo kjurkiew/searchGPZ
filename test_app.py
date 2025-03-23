@@ -4,12 +4,13 @@ import tempfile
 import pandas as pd
 from flask_testing import TestCase
 from app import app, db, User, UserQueries, RegistrationKey, load_gpz_data, geokoduj_adres, znajdz_najblizsze_gpz
-from flask_login import login_required, current_user  # Dodanie brakującego importu current_user
-from datetime import datetime, UTC  # Dodanie UTC do importu dla datetime.now(UTC)
+from flask_login import login_required, current_user 
+from datetime import datetime, UTC  
 import json
 from unittest.mock import patch, MagicMock
 from io import StringIO
-from flask import request  # Dodanie brakującego importu
+from flask import request  
+
 
 class SearchGPZTestCase(TestCase):
     def create_app(self):
