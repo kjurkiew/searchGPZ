@@ -10,6 +10,9 @@ import pandas as pd
 from functools import wraps
 from datetime import datetime, timedelta
 import re
+import secrets
+import string
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'tajny-klucz-aplikacji')
@@ -49,6 +52,17 @@ class UserQueries(db.Model):
         db.UniqueConstraint('user_id', 'month', name='unique_user_month'),
     )
 
+# Model dla kluczy rejestracyjnych
+class RegistrationKey(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(16), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    used = db.Column(db.Boolean, default=False)
+    used_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    def __repr__(self):
+        return f'<RegistrationKey {self.key}>'
+    
 # Funkcja do wczytania danych GPZ z pliku CSV
 def load_gpz_data():
     gpz_data = []
@@ -221,18 +235,32 @@ def register():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        password_confirm = request.form.get('password_confirm')
+        registration_key = request.form.get('registration_key')
         
         # Walidacja danych wejściowych
-        if not username or not password:
+        if not username or not password or not password_confirm or not registration_key:
             flash('Proszę wypełnić wszystkie pola.')
+            return render_template('register.html')
+            
+        # Sprawdzenie hasła
+        if password != password_confirm:
+            flash('Hasła nie pasują do siebie.')
             return render_template('register.html')
             
         # Usunięcie potencjalnie niebezpiecznych znaków
         username = re.sub(r'[<>\'";]', '', username)
+        registration_key = re.sub(r'[<>\'";]', '', registration_key)
         
         # Sprawdzenie długości nazwy użytkownika
         if len(username) < 3 or len(username) > 50:
             flash('Nazwa użytkownika musi mieć od 3 do 50 znaków.')
+            return render_template('register.html')
+            
+        # Sprawdzenie, czy klucz rejestracyjny jest ważny
+        key = RegistrationKey.query.filter_by(key=registration_key, used=False).first()
+        if not key:
+            flash('Nieprawidłowy lub już wykorzystany klucz rejestracyjny.')
             return render_template('register.html')
             
         existing_user = User.query.filter_by(username=username).first()
@@ -244,6 +272,11 @@ def register():
                 new_user = User(username=username)
                 new_user.set_password(password)
                 db.session.add(new_user)
+                
+                # Oznacz klucz jako wykorzystany
+                key.used = True
+                key.used_by = new_user.id
+                
                 db.session.commit()
                 flash('Rejestracja zakończona pomyślnie. Możesz się teraz zalogować.')
                 return redirect(url_for('login'))
@@ -252,6 +285,79 @@ def register():
                 flash(f'Wystąpił błąd podczas rejestracji: {str(e)}')
                 
     return render_template('register.html')
+
+# Dodaj trasę do zmiany hasła
+@app.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        new_password_confirm = request.form.get('new_password_confirm')
+        
+        # Walidacja danych wejściowych
+        if not current_password or not new_password or not new_password_confirm:
+            flash('Proszę wypełnić wszystkie pola.')
+            return render_template('change_password.html')
+            
+        # Sprawdzenie, czy hasło jest poprawne
+        if not current_user.check_password(current_password):
+            flash('Aktualne hasło jest niepoprawne.')
+            return render_template('change_password.html')
+            
+        # Sprawdzenie, czy nowe hasło jest takie samo w obu polach
+        if new_password != new_password_confirm:
+            flash('Nowe hasła nie pasują do siebie.')
+            return render_template('change_password.html')
+            
+        # Sprawdzenie, czy nowe hasło jest inne niż stare
+        if current_password == new_password:
+            flash('Nowe hasło musi różnić się od aktualnego.')
+            return render_template('change_password.html')
+            
+        try:
+            # Ustaw nowe hasło
+            current_user.set_password(new_password)
+            db.session.commit()
+            flash('Hasło zostało zmienione pomyślnie.')
+            return redirect(url_for('wyszukaj_gpz'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Wystąpił błąd podczas zmiany hasła: {str(e)}')
+            
+    return render_template('change_password.html')
+
+# Dodaj trasę do zarządzania kluczami rejestracyjnymi
+@app.route('/admin/keys', methods=['GET', 'POST'])
+@login_required
+def admin_keys():
+    # Można dodać sprawdzenie, czy użytkownik jest administratorem
+    
+    if request.method == 'POST' and 'generate_keys' in request.form:
+        try:
+            key_count = int(request.form.get('key_count', 10))
+            key_count = min(max(1, key_count), 100)  # Ograniczenie do 1-100 kluczy
+            
+            for _ in range(key_count):
+                # Generuj unikalny 16-znakowy klucz
+                while True:
+                    key = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(16))
+                    if not RegistrationKey.query.filter_by(key=key).first():
+                        break
+                
+                new_key = RegistrationKey(key=key)
+                db.session.add(new_key)
+                
+            db.session.commit()
+            flash(f'Wygenerowano {key_count} nowych kluczy rejestracyjnych.')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Wystąpił błąd podczas generowania kluczy: {str(e)}')
+    
+    # Pobierz wszystkie klucze
+    keys = RegistrationKey.query.order_by(RegistrationKey.created_at.desc()).all()
+    
+    return render_template('admin_keys.html', keys=keys)
 
 # Wylogowanie
 @app.route('/logout')

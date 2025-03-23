@@ -278,7 +278,9 @@
             <div class="nav">
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('wyszukaj_gpz') }}"><i class="fas fa-search"></i> Wyszukaj GPZ</a>
+                    <a href="{{ url_for('change_password') }}"><i class="fas fa-key"></i> Zmień hasło</a>
                     <a href="{{ url_for('admin_gpz') }}"><i class="fas fa-cogs"></i> Zarządzaj GPZ</a>
+                    <a href="{{ url_for('admin_keys') }}"><i class="fas fa-key"></i> Klucze rejestracyjne</a>
                     <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Wyloguj</a>
                 {% else %}
                     <a href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt"></i> Zaloguj</a>

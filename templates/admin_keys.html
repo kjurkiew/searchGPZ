@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <h2><i class="fas fa-key"></i> Zarządzanie kluczami rejestracyjnymi</h2>
+    
+    <div class="form-group" style="margin-top: 1.5rem;">
+        <form method="POST" action="{{ url_for('admin_keys') }}">
+            <label for="key_count">Liczba kluczy do wygenerowania:</label>
+            <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                <input type="number" id="key_count" name="key_count" min="1" max="100" value="10" style="width: 100px;">
+                <button type="submit" name="generate_keys"><i class="fas fa-plus-circle"></i> Generuj klucze</button>
+            </div>
+        </form>
+    </div>
+    
+    <div style="margin-top: 2rem;">
+        <h3>Aktywne klucze rejestracyjne</h3>
+        <div class="result" style="margin-top: 1rem;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding: 0.5rem; border-bottom: 1px solid #ddd;">Klucz</th>
+                        <th style="text-align: left; padding: 0.5rem; border-bottom: 1px solid #ddd;">Data utworzenia</th>
+                        <th style="text-align: center; padding: 0.5rem; border-bottom: 1px solid #ddd;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key in keys %}
+                    <tr>
+                        <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">{{ key.key }}</td>
+                        <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">{{ key.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td style="padding: 0.5rem; border-bottom: 1px solid #eee; text-align: center;">
+                            {% if key.used %}
+                                <span style="color: #f72585;"><i class="fas fa-times-circle"></i> Użyty</span>
+                            {% else %}
+                                <span style="color: #4cc9f0;"><i class="fas fa-check-circle"></i> Aktywny</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
