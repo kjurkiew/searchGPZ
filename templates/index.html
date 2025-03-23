@@ -5,7 +5,11 @@
         <h1><i class="fas fa-bolt"></i> Wyszukiwarka GPZ</h1>
         <p>Witaj w aplikacji do wyszukiwania najbliższych Głównych Punktów Zasilania (GPZ) wraz z informacją o dostępnej mocy.</p>
         <p>Nasza aplikacja pomoże Ci szybko znaleźć trzy najbliższe GPZ w Twojej okolicy oraz sprawdzić informacje o dostępnej mocy.</p>
-        <img src="/api/placeholder/600/300" alt="placeholder" style="max-width: 100%; border-radius: 8px; margin: 1.5rem 0;">
+        
+        <div style="max-width: 100%; margin: 1.5rem 0; text-align: center; padding: 3rem; background-color: #f8f9fa; border-radius: 8px;">
+            <p style="font-size: 1.5rem; font-weight: 500; color: #333;">Znajdź najbliższe GPZ w swojej okolicy</p>
+        </div>
+        
         <p>Aby skorzystać z wyszukiwarki, <a href="{{ url_for('login') }}">zaloguj się</a> lub <a href="{{ url_for('register') }}">zarejestruj</a>.</p>
     </div>
 {% endblock %}
