@@ -30,6 +30,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)  # Dodane pole roli
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -150,9 +151,22 @@ def load_gpz_data():
     
     return gpz_data
     
-# Inicjalizacja bazy danych
+# Inicjalizacja bazy danych i tworzenie konta administratora
 with app.app_context():
     db.create_all()
+    
+    # Sprawdź czy istnieje konto administratora, jeśli nie - utwórz je
+    admin_user = User.query.filter_by(username='GPZadmin').first()
+    if not admin_user:
+        admin_user = User(username='GPZadmin', is_admin=True)
+        admin_user.set_password('GPZ202%')
+        db.session.add(admin_user)
+        try:
+            db.session.commit()
+            print('Konto administratora zostało utworzone. Zmień hasło przy pierwszym użyciu')
+        except Exception as e:
+            db.session.rollback()
+            print(f'Błąd podczas tworzenia konta administratora: {e}')
 
 # Funkcja do geokodowania adresu (zamiana adresu na współrzędne)
 def geokoduj_adres(adres):
@@ -186,6 +200,16 @@ def znajdz_najblizsze_gpz(lat, lon, limit=3):
     # Posortuj po odległości i zwróć 3 najbliższe
     gpz_z_odlegloscia.sort(key=lambda x: x[1])
     return gpz_z_odlegloscia[:limit]
+
+# Dekorator do sprawdzania uprawnień administratora
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            flash('Brak dostępu. Ta strona jest dostępna tylko dla administratorów.')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Strona główna
 @app.route('/', methods=['GET', 'POST'])
@@ -330,6 +354,7 @@ def change_password():
 # Dodaj trasę do zarządzania kluczami rejestracyjnymi
 @app.route('/admin/keys', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def admin_keys():
     # Można dodać sprawdzenie, czy użytkownik jest administratorem
     
@@ -457,6 +482,7 @@ def wyszukaj_gpz():
 
 # Panel administracyjny do zarządzania danymi GPZ
 @app.route('/admin/gpz', methods=['GET', 'POST'])
+@admin_required
 @login_required
 def admin_gpz():
     # Tutaj można dodać dodatkowe sprawdzenie, czy użytkownik ma uprawnienia administratora
